@@ -1,0 +1,161 @@
+TAXING = {};
+
+AddCSLuaFile();
+AddCSLuaFile("taxing_config.lua");
+include("taxing_config.lua");
+
+hook.Add("PostGamemodeLoaded", "taxing_reload", function()
+	include("taxing_config.lua");
+end)
+
+if(SERVER)then
+	util.AddNetworkString("TAX_menuOpen");
+	util.AddNetworkString("TAX_menuClose");
+	util.AddNetworkString("TAX_sendMoney");
+	
+	TAXING.nextTax = CurTime() + TAXING.delay;
+	SetGlobalInt("taxing_nextTax", TAXING.nextTax);
+	
+	if(file.Exists("taxing_banktotale.txt", "DATA"))then
+		local total = tonumber(file.Read("taxing_banktotale.txt", "DATA")) || 0;
+		
+		SetGlobalInt("taxing_BankTotal", total);
+	end
+	
+	concommand.Add(TAXING.consoleCommand, function(pl)
+		if(!table.HasValue(TAXING.canUse, pl:Team()))then return; end
+		
+		pl.TAX_usedMenu = true;
+
+******************** CENSORED FOR COPYRIGHT ******************************
+	
+	hook.Add("Think", "TAX_taxPls", function()
+		if(TAXING.nextTax <= CurTime())then
+			local collected = 0;
+			local pls = player.GetAll();
+			for i = 1, #pls do
+				local amount = math.Round((TAXING.percentage / 100) * pls[i]:getDarkRPVar("money"));
+				
+				if(!pls[i]:canAfford(amount))then continue; end
+				if(table.HasValue(TAXING.noText, pls[i]:Team()))then continue; end
+				
+				pls[i]:addMoney(-amount);
+				
+				if(TAXING.message && TAXING.message != "")then
+					DarkRP.notify(pls[i], 0, 4, string.Replace(TAXING.message, "{TAXCOST}", DarkRP.formatMoney(amount)));
+				end
+				
+				collected = collected + amount;
+			end
+			
+			local newTotal = GetGlobalInt("taxing_BankTotal", 0) + collected;
+      
+******************** CENSORED FOR COPYRIGHT ******************************
+	
+	net.Receive("TAX_sendMoney", function(l, cli)
+		if(!cli.TAX_usedMenu)then return; end
+		
+		local id = net.ReadString();
+		local amt = tonumber(net.ReadString());
+		
+		if(!id || !amt)then return; end
+		
+		local pl = player.GetBySteamID(id);
+		if(!pl || !pl:IsValid())then return; end
+		
+		if(GetGlobalInt("taxing_BankTotal", 0) < amt)then
+			DarkRP.notify(pl, 1, 4, "Not enough available funds!");
+			return;
+		end
+		
+		local newTotal = GetGlobalInt("taxing_BankTotal", 0) - amt;
+		SetGlobalInt("taxing_BankTotal", newTotal);
+		file.Write("taxing_banktotale.txt", newTotal);
+		
+		pl:addMoney(amt);
+	end)
+else
+******************** CENSORED FOR COPYRIGHT ******************************
+	
+	net.Receive("TAX_menuOpen", function()
+		local menu = vgui.Create("DFrame");
+		menu:SetSize(ScrW() * (TAXING.menuW / 100), ScrH() * (TAXING.menuH / 100));
+		menu:Center();
+		menu:SetTitle("");
+		menu:ShowCloseButton(false);
+		menu:MakePopup();
+		menu.Paint = function(p, w, h)
+			draw.RoundedBox(4, 0, 0, w, h, TAXING.menuColor);
+			
+			local ty = 15;
+			local _, th = drawSimpleText(TAXING.currentText, "TAX_info_font", w/2, ty, TAXING.currentTextColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP);
+			
+			ty = ty + th;
+			
+			local _, th = drawSimpleText(DarkRP.formatMoney(GetGlobalInt("taxing_BankTotal", 0)), "TAX_info_font", w/2, ty, TAXING.currentTextColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP);
+			
+			ty = ty + th + 10;
+			
+			local _, th = drawSimpleText(TAXING.nextTaxText, "TAX_info_font", w/2, ty, TAXING.nextTaxTextColor , TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP);
+			
+			ty = ty + th;
+			
+			drawSimpleText(string.NiceTime((GetGlobalInt("taxing_nextTax", CurTime()) - CurTime()) + 1), "TAX_info_font", w/2, ty, TAXING.nextTaxTextColor , TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP);
+		end
+		menu.OnClose = function()
+			net.Start("TAX_menuClose");
+			net.SendToServer();
+		end
+******************** CENSORED FOR COPYRIGHT ******************************
+		
+		local userSelect = vgui.Create("DComboBox", menu);
+		userSelect:SetSize(menu:GetWide() * 0.92, menu:GetTall() * 0.1);
+		userSelect:SetPos(0, menu:GetTall() * 0.5);
+		userSelect:CenterHorizontal();
+		userSelect:SetValue("Select Player");
+		
+		local pls = player.GetAll();
+		for i = 1, #pls do
+			userSelect:AddChoice(pls[i]:Nick(), pls[i]:SteamID());
+		end
+		
+		userSelect.OnSelect = function(p, index, value)
+			menu.selectedID = p:GetOptionData(index);
+		end
+		
+		local amount = vgui.Create("DTextEntry", menu);
+		amount:SetSize(menu:GetWide() * 0.92, menu:GetTall() * 0.1);
+		amount:SetPos(0, (menu:GetTall() * 0.55) + userSelect:GetTall());
+		amount:CenterHorizontal();
+		amount:SetPlaceholderText("Amount (EX. 1000)");
+		amount.AllowInput = function(self, str)
+			if(tonumber(str) == nil)then
+				return true;
+			end
+		end
+		
+		local sendto = vgui.Create("DButton", menu);
+		sendto:SetText("");
+		sendto:SetSize(menu:GetWide() * 0.92, menu:GetTall() * 0.15);
+		sendto:SetPos(0, (menu:GetTall() * 0.95) - sendto:GetTall());
+		sendto:CenterHorizontal();
+		sendto.Paint = function(p, w, h)
+			draw.RoundedBox(0, 0, 0, w, h, (p:IsHovered() && TAXING.sendHoverColor) || TAXING.sendColor);
+			
+			drawSimpleText(TAXING.sendText, "TAX_send_button_font", w/2, h/2, TAXING.sendTextColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER);
+		end
+		
+		sendto.DoClick = function()
+			local val = amount:GetValue();
+			if(!menu.selectedID || !val || val == "")then return; end
+			
+			net.Start("TAX_sendMoney");
+				net.WriteString(menu.selectedID);
+				net.WriteString(val);
+			net.SendToServer();
+		end
+	end)
+end
+
+
+IMAGE NOT AVAILABLE : MESSAGE ON DISCORD TO JOIN A SERVER THAT HAS THE WORKING ADDON : Mythic#0002
