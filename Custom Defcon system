@@ -1,0 +1,195 @@
+/******************************
+		Made by Mythic
+********************************/
+DEFCON = {};
+DEFCON.levels = {};
+
+include("defcon_config.lua");
+
+hook.Add("PostGamemodeLoaded", "defcon_reload", function()
+	include("defcon_config.lua");
+end)
+
+SetGlobalInt("defcon_level", DEFCON.defaultLevel);
+
+for k,b in pairs(DEFCON.levels) do
+	if(b.sound)then
+		sound.Add({
+			name = "DEFCON_"..k,
+			channel = CHAN_STATIC,
+			volume = 1.0,
+			level = 80,
+********************* SECTION REMOVED FOR COPYRIGHT ***************************
+	
+	for i=1, #t do
+		if(t[i] && t[i] == v)then
+			return true;
+		end
+	end
+	
+	return false;
+end
+
+local function canDoAction(pl)
+	if(isInTable((DEFCON.teamWhitelist||{}), pl:Team()))then
+		return true;
+	end
+	
+	return false;
+end
+
+if(SERVER)then
+	util.AddNetworkString("defcon_sound");
+	
+	AddCSLuaFile("defcon_config.lua");
+	
+	resource.AddFile("resource/fonts/"..DEFCON.topTextFont);
+	resource.AddFile("resource/fonts/"..DEFCON.descTextFont);
+	resource.AddFile("resource/fonts/"..DEFCON.numberTextFont);
+	
+********************* SECTION REMOVED FOR COPYRIGHT ***************************
+			
+			if(!val && DEFCON.allowDisable)then
+				SetGlobalInt("defcon_level", -13324);
+				DEFCON.sendMessage(pl, DEFCON.disabledMessage);
+				
+				net.Start("defcon_sound");
+					net.WriteString("");
+				net.Broadcast();
+				return;
+			end
+			
+			if(!val || !type(val) == "number")then 
+				DEFCON.sendMessage(pl, "Please use a number!");
+				return; 
+			end
+					
+			if(!DEFCON.levels[val])then
+				DEFCON.sendMessage(pl, string.Replace(DEFCON.noDefconMessage || "Defcon state {DEFCONLEVEL} is out of range.", "{DEFCONLEVEL}", val));
+			else
+				if(val == GetGlobalInt("defcon_level", -5444))then
+					DEFCON.sendMessage(pl, DEFCON.alreadySetMessage);
+					return;
+				end
+			
+				local inf = DEFCON.levels[val];
+				if(inf.sound)then
+					net.Start("defcon_sound");
+						net.WriteString("DEFCON_"..val);
+					net.Broadcast();
+				else
+					net.Start("defcon_sound");
+						net.WriteString("");
+					net.Broadcast();
+				end
+				
+				SetGlobalInt("defcon_level", val);
+				ULib.csay(pl, string.Replace(DEFCON.changedDefconMessage || "You have set the defcon state to '{DEFCONLEVEL}'!", "{DEFCONLEVEL}", val));
+			end
+		else
+			DEFCON.sendMessage(pl, DEFCON.noAccessMessage || "You do not have the access to change defcon.");
+		end
+	end)
+	
+********************* SECTION REMOVED FOR COPYRIGHT ***************************
+
+	hook.Add("PlayerSpawn", "defcon_spawncheck", function(pl)
+		if(!pl.defcon_loaded)then
+			timer.Simple(5, function()
+				if(DEFCON.levels[GetGlobalInt("defcon_level", -13324)])then
+					net.Start("defcon_sound");
+						net.WriteString("DEFCON_"..GetGlobalInt("defcon_level", -13324));
+					net.Send(pl);
+				end
+				
+				pl.defcon_loaded = true;
+			end)
+		end
+	end)
+else
+	surface.CreateFont("DEFCON_FONT_TOP", {
+		font = string.StripExtension(DEFCON.topTextFont) || "Arial",
+		size = DEFCON.topTextSize || 35,
+		weight = DEFCON.topTextWeight
+	})
+	
+	surface.CreateFont("DEFCON_FONT_NUMBER", {
+		font = string.StripExtension(DEFCON.numberTextFont) || "Arial",
+		size = DEFCON.numberTextSize || 35,
+		weight = DEFCON.numberTextWeight
+	})
+	
+********************* SECTION REMOVED FOR COPYRIGHT ***************************
+	
+	net.Receive("defcon_sound", function()
+		local sound = net.ReadString();
+		
+		for k,b in pairs(DEFCON.levels) do
+			if(b.sound)then
+				LocalPlayer():StopSound("DEFCON_"..k);
+			end
+		end
+		
+		if(sound == "")then return; end
+		
+		LocalPlayer():EmitSound(sound);
+	end)
+	
+	hook.Add("HUDPaint", "defcon_drawText1", function()
+		local curLevel = GetGlobalInt("defcon_level", DEFCON.defaultLevel);
+		
+		local x = (ScrW() * (DEFCON.boxPosX / 100));
+		local y = (ScrH() * (DEFCON.boxPosY / 100));
+		local w = (ScrW() * (DEFCON.boxWidth / 100));
+		local h = (ScrH() * (DEFCON.boxHeight / 100));		
+		
+		draw.RoundedBox(4, x, y, w, h, DEFCON.boxColor);
+		draw.SimpleText(DEFCON.topText, "DEFCON_FONT_TOP", (x + 1) + (w/2), (y + 1) + (h*0.001), color_black, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP);
+		draw.SimpleText(DEFCON.topText, "DEFCON_FONT_TOP", x + (w/2), y + (h*0.001), DEFCON.topTextColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP);
+		
+		surface.SetFont("DEFCON_FONT_TOP");
+		local _,tH = surface.GetTextSize(DEFCON.topText);
+		
+		local orgX = x;
+		
+		x = x + 15;
+		y = y + tH + 3;
+
+		for i = 1, #DEFCON.levels do
+			local curInfo = DEFCON.levels[i];
+			if(curInfo)then
+				local col = curInfo.textColor || Color(255, 255, 255);
+				local bcol = curInfo.boxColor || DEFCON.numberBoxColor;
+				local ncol = curInfo.numberColor || DEFCON.numberTextColor;
+				local txt = curInfo.text || "";
+				
+				local curText = string.Replace(DEFCON.text || "{DEFCONLEVEL}", "{DEFCONLEVEL}", i || "");
+				
+				local bx = x;
+				local by = y;
+				local bw = (w - (11 * #DEFCON.levels)) * (1 / #DEFCON.levels);
+				local bh = h * 0.38;
+				
+				draw.RoundedBox(4, bx, by, bw, bh, bcol);
+				if(i == curLevel)then
+					surface.SetDrawColor(DEFCON.numberOutlineColor);
+					surface.DrawOutlinedRect(x, y, bw + 2, bh);
+				end
+				
+				draw.SimpleText(curText, "DEFCON_FONT_NUMBER", (x + 1) + (bw/2), (y + 1) + (bh/2), color_black, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER);
+				draw.SimpleText(curText, "DEFCON_FONT_NUMBER", x + (bw/2), y + (bh/2), ncol, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER);
+				
+				if(i == curLevel)then
+					draw.SimpleText(txt, "DEFCON_FONT_DESC", (orgX + 1) + (w/2), (y + 1) + bh + (bh * 0.59), color_black, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM);
+					draw.SimpleText(txt, "DEFCON_FONT_DESC", orgX + (w/2), y + bh + (bh * 0.6), col, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM);
+				end
+				
+				x = x + bw + 6;
+			end
+		end
+	end)
+  end}
+																
+                                
+                                
+                                IMAGE OF WORKING SYSTEM :  https://imgur.com/a/xftrf3C
